@@ -25,3 +25,8 @@ spring:
     redis:
       host: localhost
       port: 6379
+
+festix:
+  reservation:
+    hold-ttl-minutes: 5
+    lock-timeout-millis: 3000
