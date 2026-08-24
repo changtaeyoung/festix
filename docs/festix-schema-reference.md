@@ -85,6 +85,13 @@ Full DDL with inline rationale comments: `ddl.sql` at project root (comments are
 - **Safety-net batch**: pub/sub can silently miss expiry events (e.g. during a deploy). A low-frequency batch (~1 min) re-scans `WHERE seat.status='HELD' AND reservation.end_ttl < NOW()` and reuses the same conditional UPDATE — no separate safety logic needed. This batch finding rows repeatedly (not just occasionally) signals a real pub/sub leak, not noise — worth a Prometheus counter.
 - Whenever a hold is released (via pub/sub or the safety-net batch) and its `payment` was still `PENDING`, set that payment to `CANCELED` in the same operation — don't leave orphaned `PENDING` rows.
 
+## Reservation Lifecycle — Removing a Seat Before Payment
+
+- Supported: while a multi-seat `reservation` is still `HELD` (pre-payment), the user may deselect one seat from the bundle without cancelling the whole reservation.
+- **Do not** implement this via `orphanRemoval` / physically deleting the `reservation_item` row — `reservation_item` is append-only history (see DDL rationale) and must never be deleted. Set `orphanRemoval = false` on `Reservation.reservationItems` for this reason, even though it looks convenient — a stray `.remove()` call anywhere in the codebase would otherwise silently delete history data (a footgun, same category as the missing `Seat → ReservationItem` inverse mapping).
+- Correct implementation: release the seat with the same conditional UPDATE already used for TTL expiry and refund — `UPDATE seat SET status='AVAILABLE' WHERE id=? AND status='HELD'` — and leave the `reservation_item` row untouched. Current-state truth always comes from `seat.status`, never from whether a `reservation_item` row exists, so leaving the row in place is harmless.
+- This is independent of the all-or-nothing principle used at initial hold time (if any of N seats fails to lock, roll back all N) — that rule governs the atomicity of the *initial* lock acquisition, not whether a user can later shrink their own already-successful selection.
+
 ## Payment / Refund
 
 - `payment` row is created only when the user actually clicks "pay" (not at seat-hold time).
