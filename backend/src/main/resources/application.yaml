@@ -30,3 +30,5 @@ festix:
   reservation:
     hold-ttl-minutes: 5
     lock-timeout-millis: 3000
+    safety-net:
+      interval-millis: 60000
