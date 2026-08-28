@@ -16,4 +16,9 @@ public interface SeatRepository extends JpaRepository<Seat, Long>, SeatLockRepos
     @Query("update Seat s set s.status = com.festix.festix.domain.seat.SeatStatus.AVAILABLE "
             + "where s.id = :id and s.status = :fromStatus")
     int releaseSeat(@Param("id") Long id, @Param("fromStatus") SeatStatus fromStatus);
+
+    @Modifying(clearAutomatically = true)
+    @Query("update Seat s set s.status = com.festix.festix.domain.seat.SeatStatus.SOLD "
+            + "where s.id = :id and s.status = com.festix.festix.domain.seat.SeatStatus.HELD")
+    int sellSeat(@Param("id") Long id);
 }

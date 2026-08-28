@@ -1,6 +1,7 @@
 package com.festix.festix.redis;
 
-import com.festix.festix.domain.seat.SeatReleaseService;
+import com.festix.festix.domain.payment.CancelReason;
+import com.festix.festix.domain.reservation.SeatHoldExpiryCoordinator;
 import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,16 +11,16 @@ import org.springframework.stereotype.Component;
 
 /**
  * Listens for Redis "expired" keyevent notifications. When one of our own
- * seat:hold:{seatId} keys expires, releases the seat by reusing the existing
- * conditional release UPDATE in SeatReleaseService — no separate release
- * logic here.
+ * seat:hold:{seatId} keys expires, releases the seat and cancels any
+ * still-PENDING payment on its reservation via SeatHoldExpiryCoordinator —
+ * no separate release or cancellation logic here.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class SeatHoldExpiryListener implements MessageListener {
 
-    private final SeatReleaseService seatReleaseService;
+    private final SeatHoldExpiryCoordinator seatHoldExpiryCoordinator;
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
@@ -27,7 +28,7 @@ public class SeatHoldExpiryListener implements MessageListener {
 
         SeatHoldRedisKeys.parseSeatId(expiredKey).ifPresent(seatId -> {
             try {
-                seatReleaseService.releaseHeldSeat(seatId);
+                seatHoldExpiryCoordinator.handleExpiredHold(seatId, CancelReason.EXPIRED_BY_EVENT);
             } catch (Exception e) {
                 log.error("Failed to release seat after Redis hold expiry: seatId={}", seatId, e);
             }

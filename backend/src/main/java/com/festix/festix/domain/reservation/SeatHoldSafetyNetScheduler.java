@@ -1,6 +1,6 @@
 package com.festix.festix.domain.reservation;
 
-import com.festix.festix.domain.seat.SeatReleaseService;
+import com.festix.festix.domain.payment.CancelReason;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,9 +13,9 @@ import org.springframework.stereotype.Component;
  * SQL-truth safety net for seats the Redis expiry path may have missed
  * (dropped keyspace notification, failed TTL key write, etc). Periodically
  * scans for seats still HELD whose owning reservation.end_ttl has already
- * passed, and releases each one through the same conditional-release entry
- * point the Redis listener uses — no separate release logic here. Payment
- * handling is out of scope; there is no payment service yet.
+ * passed, and resolves each one (seat release + any PENDING payment
+ * cancellation) through the same SeatHoldExpiryCoordinator the Redis
+ * listener uses — no separate release or cancellation logic here.
  */
 @Component
 @RequiredArgsConstructor
@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 public class SeatHoldSafetyNetScheduler {
 
     private final ReservationRepository reservationRepository;
-    private final SeatReleaseService seatReleaseService;
+    private final SeatHoldExpiryCoordinator seatHoldExpiryCoordinator;
     private final MeterRegistry meterRegistry;
 
     @Scheduled(fixedDelayString = "${festix.reservation.safety-net.interval-millis}")
@@ -36,7 +36,9 @@ public class SeatHoldSafetyNetScheduler {
         int recovered = 0;
         for (Long seatId : seatIds) {
             try {
-                if (seatReleaseService.releaseHeldSeat(seatId) > 0) {
+                ExpiryOutcome outcome = seatHoldExpiryCoordinator.handleExpiredHold(
+                        seatId, CancelReason.EXPIRED_BY_BATCH_RECOVERY);
+                if (outcome.seatReleased()) {
                     recovered++;
                     meterRegistry.counter("seat_hold.safety_net.recovered").increment();
                 }
