@@ -5,6 +5,7 @@ import com.festix.festix.domain.reservation.ReservationItem;
 import com.festix.festix.domain.reservation.ReservationItemRepository;
 import com.festix.festix.domain.reservation.ReservationNotFoundException;
 import com.festix.festix.domain.reservation.ReservationRepository;
+import com.festix.festix.domain.reservation.SeatHoldTtlExtender;
 import com.festix.festix.domain.seat.Seat;
 import com.festix.festix.domain.seat.SeatRepository;
 import com.festix.festix.domain.seat.SeatStatus;
@@ -24,6 +25,7 @@ public class PaymentService {
     private final ReservationRepository reservationRepository;
     private final ReservationItemRepository reservationItemRepository;
     private final SeatRepository seatRepository;
+    private final SeatHoldTtlExtender seatHoldTtlExtender;
 
     /**
      * Creates the PENDING payment for a reservation, summing seat prices via
@@ -31,6 +33,11 @@ public class PaymentService {
      * — this is never recomputed later. Rejects a reservation that already
      * has a PENDING or COMPLETED payment so a double "pay" click can't create
      * two payment rows for the same bundle.
+     *
+     * <p>Before the payment row is created, the hold TTL is reset once via
+     * {@link SeatHoldTtlExtender} (Redis first, then Postgres, in its own
+     * transaction). If Redis can't be updated the extension throws and this
+     * whole method aborts without creating a payment.
      */
     @Transactional
     public Payment startPayment(Long reservationId) {
@@ -45,6 +52,8 @@ public class PaymentService {
         if (items.isEmpty()) {
             throw new ReservationNotFoundException(reservationId);
         }
+
+        seatHoldTtlExtender.extendOnPaymentStart(reservationId);
 
         BigDecimal amount = items.stream()
                 .map(item -> item.getSeat().getPrice())

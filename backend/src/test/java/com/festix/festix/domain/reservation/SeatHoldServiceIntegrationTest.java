@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Propagation;
@@ -47,6 +48,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
 @Import(SeatHoldService.class)
+@EnableConfigurationProperties(ReservationProperties.class)
 @Testcontainers
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class SeatHoldServiceIntegrationTest {

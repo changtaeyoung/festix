@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,12 +22,7 @@ public class SeatHoldService {
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
-
-    @Value("${festix.reservation.hold-ttl-minutes}")
-    private long holdTtlMinutes;
-
-    @Value("${festix.reservation.lock-timeout-millis}")
-    private long lockTimeoutMillis;
+    private final ReservationProperties reservationProperties;
 
     /**
      * Locks every requested seat (sorted ascending, acquired sequentially to
@@ -43,7 +37,7 @@ public class SeatHoldService {
 
         List<Seat> lockedSeats = new ArrayList<>(sortedSeatIds.size());
         for (Long seatId : sortedSeatIds) {
-            Seat seat = seatRepository.findByIdForUpdate(seatId, lockTimeoutMillis)
+            Seat seat = seatRepository.findByIdForUpdate(seatId, reservationProperties.lockTimeoutMillis())
                     .orElseThrow(() -> new SeatNotFoundException(seatId));
 
             if (!seat.getFestival().getId().equals(festivalId)) {
@@ -65,7 +59,7 @@ public class SeatHoldService {
         }
 
         User userRef = userRepository.getReferenceById(userId);
-        LocalDateTime endTtl = LocalDateTime.now().plusMinutes(holdTtlMinutes);
+        LocalDateTime endTtl = LocalDateTime.now().plusMinutes(reservationProperties.holdTtlMinutes());
 
         Reservation reservation = Reservation.builder()
                 .user(userRef)
