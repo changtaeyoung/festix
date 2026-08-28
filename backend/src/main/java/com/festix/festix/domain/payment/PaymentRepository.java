@@ -11,10 +11,25 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     List<Payment> findByReservationId(Long reservationId);
 
+    /**
+     * Phase 1 of confirmation: PENDING -> CONFIRMING, committed on its own so
+     * the gap before {@link #confirmPayment} is a real seam for a future
+     * simulated PG-response wait. No timestamp — paidAt is still stamped only
+     * at COMPLETED.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("update Payment p set p.status = com.festix.festix.domain.payment.PaymentStatus.CONFIRMING "
+            + "where p.id = :id and p.status = com.festix.festix.domain.payment.PaymentStatus.PENDING")
+    int beginConfirm(@Param("id") Long id);
+
+    /**
+     * Phase 2 of confirmation: CONFIRMING -> COMPLETED. Only a payment that
+     * has already passed through {@link #beginConfirm} qualifies.
+     */
     @Modifying(clearAutomatically = true)
     @Query("update Payment p set p.status = com.festix.festix.domain.payment.PaymentStatus.COMPLETED, "
             + "p.paidAt = :paidAt "
-            + "where p.id = :id and p.status = com.festix.festix.domain.payment.PaymentStatus.PENDING")
+            + "where p.id = :id and p.status = com.festix.festix.domain.payment.PaymentStatus.CONFIRMING")
     int confirmPayment(@Param("id") Long id, @Param("paidAt") LocalDateTime paidAt);
 
     @Modifying(clearAutomatically = true)

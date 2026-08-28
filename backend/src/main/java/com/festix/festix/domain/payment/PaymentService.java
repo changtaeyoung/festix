@@ -14,6 +14,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,17 @@ public class PaymentService {
     private final ReservationItemRepository reservationItemRepository;
     private final SeatRepository seatRepository;
     private final SeatHoldTtlExtender seatHoldTtlExtender;
+
+    /**
+     * Self-reference so the two confirmation phases each run in their own
+     * transaction. Calling them as plain {@code this.} methods would bypass
+     * the Spring proxy and collapse both into one transaction, erasing the
+     * intentional commit gap between them. {@code @Lazy} breaks the
+     * self-referential wiring cycle at startup.
+     */
+    @Lazy
+    @Autowired
+    private PaymentService self;
 
     /**
      * Creates the PENDING payment for a reservation, summing seat prices via
@@ -70,22 +83,60 @@ public class PaymentService {
     }
 
     /**
-     * PENDING -> COMPLETED, sets paidAt, and sells every seat in the
-     * reservation (HELD -> SOLD) in the same transaction — without this, a
+     * Two-phase confirmation with a deliberate commit gap:
+     * <ol>
+     *   <li>{@link #beginConfirm} flips PENDING -> CONFIRMING and commits
+     *       immediately.</li>
+     *   <li>{@link #completeConfirmation} then does the rest — CONFIRMING ->
+     *       COMPLETED plus selling every seat — in a fresh transaction.</li>
+     * </ol>
+     * The gap between them is the seam where a future simulated PG-response
+     * wait will live; nothing fills it yet. This method is intentionally NOT
+     * {@code @Transactional} — wrapping both phases would defeat the point.
+     *
+     * <p>If phase 2 fails, the payment is left CONFIRMING (phase 1 already
+     * committed); recovering a stuck CONFIRMING is a later concern.
+     */
+    public void confirmPayment(Long paymentId) {
+        self.beginConfirm(paymentId);
+        self.completeConfirmation(paymentId);
+    }
+
+    /**
+     * Phase 1: PENDING -> CONFIRMING, committed on return. A 0-row result
+     * means the payment was not PENDING (already confirming/completed/
+     * canceled, or gone).
+     */
+    @Transactional
+    public void beginConfirm(Long paymentId) {
+        int updated = paymentRepository.beginConfirm(paymentId);
+        if (updated == 0) {
+            PaymentStatus actualStatus = paymentRepository.findById(paymentId)
+                    .map(Payment::getStatus)
+                    .orElseThrow(() -> new PaymentNotFoundException(paymentId));
+            throw new PaymentStateConflictException(paymentId, PaymentStatus.PENDING, actualStatus);
+        }
+    }
+
+    /**
+     * Phase 2: CONFIRMING -> COMPLETED, sets paidAt, and sells every seat in
+     * the reservation (HELD -> SOLD) in the same transaction — without this, a
      * paid seat stays HELD and the safety-net batch would later release it
      * back to AVAILABLE once end_ttl passes.
      */
     @Transactional
-    public void confirmPayment(Long paymentId) {
+    public void completeConfirmation(Long paymentId) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new PaymentNotFoundException(paymentId));
+
+        // Seam: a future simulated PG-response wait belongs here.
 
         int updated = paymentRepository.confirmPayment(paymentId, LocalDateTime.now());
         if (updated == 0) {
             PaymentStatus actualStatus = paymentRepository.findById(paymentId)
                     .map(Payment::getStatus)
                     .orElseThrow(() -> new PaymentNotFoundException(paymentId));
-            throw new PaymentStateConflictException(paymentId, PaymentStatus.PENDING, actualStatus);
+            throw new PaymentStateConflictException(paymentId, PaymentStatus.CONFIRMING, actualStatus);
         }
 
         List<Long> seatIds = reservationItemRepository.findByReservationId(payment.getReservation().getId()).stream()
@@ -96,7 +147,7 @@ public class PaymentService {
         for (Long seatId : seatIds) {
             int sold = seatRepository.sellSeat(seatId);
             if (sold == 0) {
-                // Payment was just confirmed PENDING -> COMPLETED above, so
+                // Payment was just confirmed CONFIRMING -> COMPLETED above, so
                 // every one of its seats should still be HELD; a 0 here means
                 // a seat was released out from under a completed payment.
                 // Roll back the whole confirmation rather than leave a paid

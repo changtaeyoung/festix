@@ -128,7 +128,10 @@ CREATE TABLE payment (
     --        같은 컬럼에 욱여넣지 않음. 부분 환불은 스코프에서 제외 —
     --        예약(reservation) 단위 all-or-nothing으로 전량 환불만 지원.
 
-                         CONSTRAINT chk_payment_status CHECK (status IN ('PENDING', 'CANCELED', 'COMPLETED', 'REFUNDED'))
+    -- [판단] CONFIRMING: 결제 확정을 2단계로 나눈 중간 상태.
+    --        PENDING -> CONFIRMING(즉시 커밋) -> COMPLETED. 두 트랜잭션 사이 간격은
+    --        향후 PG 응답 대기(모의) 단계용 seam. 만료/안전망 취소는 PENDING만 대상.
+                         CONSTRAINT chk_payment_status CHECK (status IN ('PENDING', 'CONFIRMING', 'CANCELED', 'COMPLETED', 'REFUNDED'))
 );
 
 CREATE INDEX idx_payment_reservation ON payment (reservation_id);
