@@ -1,5 +1,6 @@
 package com.festix.festix;
 
+import com.festix.festix.domain.payment.config.PaymentSafetyNetProperties;
 import com.festix.festix.domain.reservation.config.ReservationProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -8,7 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-@EnableConfigurationProperties(ReservationProperties.class)
+@EnableConfigurationProperties({ReservationProperties.class, PaymentSafetyNetProperties.class})
 public class FestixApplication {
 
 	public static void main(String[] args) {

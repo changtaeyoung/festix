@@ -94,7 +94,7 @@ class PaymentServiceConfirmationTest {
 
     @Test
     void beginConfirm_returns_whenOneRowFlipped() {
-        when(paymentRepository.beginConfirm(1L)).thenReturn(1);
+        when(paymentRepository.beginConfirm(eq(1L), any())).thenReturn(1);
 
         assertThatCode(() -> paymentService.beginConfirm(1L)).doesNotThrowAnyException();
 
@@ -103,7 +103,7 @@ class PaymentServiceConfirmationTest {
 
     @Test
     void beginConfirm_throwsConflict_whenPaymentNoLongerPending() {
-        when(paymentRepository.beginConfirm(1L)).thenReturn(0);
+        when(paymentRepository.beginConfirm(eq(1L), any())).thenReturn(0);
         when(paymentRepository.findById(1L)).thenReturn(Optional.of(paymentWithStatus(PaymentStatus.COMPLETED)));
 
         assertThatThrownBy(() -> paymentService.beginConfirm(1L))
@@ -114,7 +114,7 @@ class PaymentServiceConfirmationTest {
 
     @Test
     void beginConfirm_throwsNotFound_whenPaymentGone() {
-        when(paymentRepository.beginConfirm(1L)).thenReturn(0);
+        when(paymentRepository.beginConfirm(eq(1L), any())).thenReturn(0);
         when(paymentRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> paymentService.beginConfirm(1L))

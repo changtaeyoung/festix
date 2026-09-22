@@ -102,7 +102,9 @@ public class PaymentService {
      * {@code @Transactional} — wrapping both phases would defeat the point.
      *
      * <p>If phase 2 fails, the payment is left CONFIRMING (phase 1 already
-     * committed); recovering a stuck CONFIRMING is a later concern.
+     * committed). {@code beginConfirm} stamps {@code confirmingAt} so the
+     * stuck-CONFIRMING safety-net batch can later cancel such an orphan once
+     * it passes the staleness threshold.
      */
     public void confirmPayment(Long paymentId) {
         self.beginConfirm(paymentId);
@@ -116,7 +118,7 @@ public class PaymentService {
      */
     @Transactional
     public void beginConfirm(Long paymentId) {
-        int updated = paymentRepository.beginConfirm(paymentId);
+        int updated = paymentRepository.beginConfirm(paymentId, LocalDateTime.now());
         if (updated == 0) {
             PaymentStatus actualStatus = paymentRepository.findById(paymentId)
                     .map(Payment::getStatus)
@@ -175,6 +177,18 @@ public class PaymentService {
     @Transactional
     public int cancelPendingPayment(Long reservationId, CancelReason reason) {
         return paymentRepository.cancelPendingByReservationId(reservationId, reason.name());
+    }
+
+    /**
+     * Cancels a single payment stuck in CONFIRMING (CONFIRMING -> CANCELED),
+     * called per id by the stuck-CONFIRMING safety-net batch so each cancel
+     * commits in its own transaction. A 0 result is expected and normal — the
+     * payment may have just completed on its own between the batch's scan and
+     * this call.
+     */
+    @Transactional
+    public int cancelStuckConfirming(Long paymentId, CancelReason reason) {
+        return paymentRepository.cancelStuckConfirming(paymentId, reason.name());
     }
 
     /**

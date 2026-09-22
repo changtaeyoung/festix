@@ -32,3 +32,7 @@ festix:
     lock-timeout-millis: 3000
     safety-net:
       interval-millis: 60000
+  payment:
+    safety-net:
+      interval-millis: 60000
+      staleness-threshold-millis: 120000

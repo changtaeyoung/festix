@@ -47,6 +47,9 @@ public class Payment {
     @Column(name = "cancel_reason", length = 500)
     private String cancelReason;
 
+    @Column(name = "confirming_at")
+    private LocalDateTime confirmingAt;
+
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
 
