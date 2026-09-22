@@ -1,9 +1,0 @@
-package com.festix.festix.domain.user;
-
-import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface UserRepository extends JpaRepository<User, Long> {
-
-    Optional<User> findByCustomId(String customId);
-}

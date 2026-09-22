@@ -11,7 +11,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.festix.festix.domain.seat.Seat;
+import com.festix.festix.domain.reservation.config.ReservationProperties;
+import com.festix.festix.domain.reservation.entity.Reservation;
+import com.festix.festix.domain.reservation.entity.ReservationItem;
+import com.festix.festix.domain.reservation.exception.ReservationNotFoundException;
+import com.festix.festix.domain.reservation.exception.SeatHoldTtlExtensionException;
+import com.festix.festix.domain.reservation.repository.ReservationItemRepository;
+import com.festix.festix.domain.reservation.repository.ReservationRepository;
+import com.festix.festix.domain.reservation.service.SeatHoldTtlExtender;
+import com.festix.festix.domain.seat.entity.Seat;
 import com.festix.festix.redis.SeatHoldRedisWriter;
 import java.time.LocalDateTime;
 import java.util.List;

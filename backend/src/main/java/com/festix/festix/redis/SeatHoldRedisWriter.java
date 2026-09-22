@@ -1,6 +1,6 @@
 package com.festix.festix.redis;
 
-import com.festix.festix.domain.reservation.SeatHoldTtlExtensionException;
+import com.festix.festix.domain.reservation.exception.SeatHoldTtlExtensionException;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import java.time.LocalDateTime;

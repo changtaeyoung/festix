@@ -1,7 +1,7 @@
 package com.festix.festix.redis;
 
-import com.festix.festix.domain.payment.CancelReason;
-import com.festix.festix.domain.reservation.SeatHoldExpiryCoordinator;
+import com.festix.festix.domain.payment.entity.CancelReason;
+import com.festix.festix.domain.reservation.service.SeatHoldExpiryCoordinator;
 import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

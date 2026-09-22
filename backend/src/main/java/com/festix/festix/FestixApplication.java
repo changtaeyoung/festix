@@ -1,6 +1,6 @@
 package com.festix.festix;
 
-import com.festix.festix.domain.reservation.ReservationProperties;
+import com.festix.festix.domain.reservation.config.ReservationProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

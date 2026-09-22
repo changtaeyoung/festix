@@ -9,7 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.festix.festix.domain.reservation.SeatHoldTtlExtensionException;
+import com.festix.festix.domain.reservation.exception.SeatHoldTtlExtensionException;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.LocalDateTime;
 import java.util.Arrays;
