@@ -1,8 +1,11 @@
 package com.festix.festix.domain.payment.exception;
 
-public class PaymentNotFoundException extends RuntimeException {
+import com.festix.festix.common.exception.BusinessException;
+import com.festix.festix.common.exception.ErrorCode;
+
+public class PaymentNotFoundException extends BusinessException {
 
     public PaymentNotFoundException(Long paymentId) {
-        super("Payment not found: id=" + paymentId);
+        super(ErrorCode.PAYMENT_NOT_FOUND, "Payment not found: id=" + paymentId);
     }
 }

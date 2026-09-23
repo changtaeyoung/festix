@@ -2,12 +2,15 @@ package com.festix.festix.domain.seat.repository;
 
 import com.festix.festix.domain.seat.entity.Seat;
 import com.festix.festix.domain.seat.entity.SeatStatus;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SeatRepository extends JpaRepository<Seat, Long>, SeatLockRepository {
+
+    List<Seat> findByFestivalIdOrderByIdAsc(Long festivalId);
 
     @Modifying(clearAutomatically = true)
     @Query("update Seat s set s.status = com.festix.festix.domain.seat.entity.SeatStatus.HELD "

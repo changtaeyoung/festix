@@ -48,6 +48,17 @@ public class PaymentService {
     private PaymentService self;
 
     /**
+     * Plain lookup for callers (e.g. the REST layer) that need the current
+     * state of a payment after a mutation, without re-running any state
+     * transition.
+     */
+    @Transactional(readOnly = true)
+    public Payment getPayment(Long paymentId) {
+        return paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new PaymentNotFoundException(paymentId));
+    }
+
+    /**
      * Creates the PENDING payment for a reservation, summing seat prices via
      * reservation_item -> seat once and baking the result into Payment.amount
      * — this is never recomputed later. Rejects a reservation that already

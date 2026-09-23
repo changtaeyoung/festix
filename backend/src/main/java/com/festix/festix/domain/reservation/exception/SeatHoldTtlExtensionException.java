@@ -1,5 +1,8 @@
 package com.festix.festix.domain.reservation.exception;
 
+import com.festix.festix.common.exception.BusinessException;
+import com.festix.festix.common.exception.ErrorCode;
+
 /**
  * Thrown when the one-time payment-start TTL extension cannot be applied to
  * Redis — a seat's {@code seat:hold:{seatId}} key is missing or no longer
@@ -8,10 +11,10 @@ package com.festix.festix.domain.reservation.exception;
  * Postgres rather than extend {@code end_ttl} for a hold that Redis considers
  * gone.
  */
-public class SeatHoldTtlExtensionException extends RuntimeException {
+public class SeatHoldTtlExtensionException extends BusinessException {
 
     public SeatHoldTtlExtensionException(Long reservationId, Long seatId, String reason) {
-        super("Cannot extend seat hold TTL: reservationId=" + reservationId
+        super(ErrorCode.SEAT_HOLD_EXPIRED, "Cannot extend seat hold TTL: reservationId=" + reservationId
                 + ", seatId=" + seatId + " (" + reason + ")");
     }
 }
